@@ -6,7 +6,7 @@ import (
 	"monkey/lexer"
 	"monkey/token"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNextToken(t *testing.T) {
@@ -31,8 +31,8 @@ func TestNextToken(t *testing.T) {
 
 	for i, tt := range tests {
 		tok := l.NextToken()
-		assert.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
-		assert.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
+		require.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
+		require.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
 	}
 }
 
@@ -95,8 +95,8 @@ func TestNextToken2(t *testing.T) {
 
 	for i, tt := range tests {
 		tok := l.NextToken()
-		assert.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
-		assert.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
+		require.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
+		require.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
 	}
 }
 
@@ -214,7 +214,7 @@ func TestNextToken3(t *testing.T) {
 
 	for i, tt := range tests {
 		tok := l.NextToken()
-		assert.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
-		assert.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
+		require.Equalf(t, tt.exceptedType, tok.Type, "tests[%d] - tokentype wrong", i)
+		require.Equalf(t, tt.exceptedLiteral, tok.Literal, "tests[%d] - literal wrong", i)
 	}
 }

@@ -27,6 +27,10 @@ func (l *Lexer) WithEndToken(ch rune) *Lexer {
 }
 
 func (l *Lexer) NextToken() *token.Token {
+	if !l.hasNext() {
+		return nil
+	}
+
 	l.skipWhiteSpace()
 
 	ch := l.next()

@@ -79,8 +79,16 @@ func ParseIndent(ident string) *Token {
 	return New(IDENT, ident)
 }
 
+func (t *Token) Is(ttype TokenType) bool {
+	return t.Type == ttype
+}
+
+func (t *Token) IsNot(ttype TokenType) bool {
+	return t.Type != ttype
+}
+
 func (t *Token) IsEOF() bool {
-	return t.Type == EOF
+	return t.Is(EOF)
 }
 
 func (t *Token) String() string {
