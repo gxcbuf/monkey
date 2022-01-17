@@ -62,6 +62,8 @@ func (l *Lexer) NextToken() *token.Token {
 		return token.New(token.SEMICOLON, string(ch))
 	case ',':
 		return token.New(token.COMMA, string(ch))
+	case ':':
+		return token.New(token.COLON, string(ch))
 	case '{':
 		return token.New(token.LBRACE, string(ch))
 	case '}':
@@ -70,6 +72,10 @@ func (l *Lexer) NextToken() *token.Token {
 		return token.New(token.LPAREN, string(ch))
 	case ')':
 		return token.New(token.RPAREN, string(ch))
+	case '[':
+		return token.New(token.LBRACKET, string(ch))
+	case ']':
+		return token.New(token.RBRACKET, string(ch))
 	case rune(0):
 		return token.New(token.EOF, string(ch))
 	case '"', '\'':
@@ -112,7 +118,7 @@ func (l *Lexer) next() rune {
 }
 
 func (l *Lexer) readString(ch rune) *token.Token {
-	str, state := string(ch), 0
+	str, state := "", 0
 
 	if ch == '"' {
 		state = 1
@@ -127,11 +133,11 @@ func (l *Lexer) readString(ch rune) *token.Token {
 		switch state {
 		case 1:
 			if ch == '"' {
-				return token.New(token.STRING, str+string(ch))
+				return token.New(token.STRING, str)
 			}
 		case 2:
 			if ch == '\'' {
-				return token.New(token.STRING, str+string(ch))
+				return token.New(token.STRING, str)
 			}
 		}
 		str += string(ch)

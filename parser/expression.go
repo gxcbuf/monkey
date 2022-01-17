@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
 
 	"monkey/ast"
 	"monkey/token"
@@ -17,6 +16,7 @@ const (
 	PRODUCT     // *
 	PREFIX      // -Xor!X
 	CALL        // myFunction(X)
+	INDEX       // array[index]
 )
 
 var precedences = map[token.TokenType]int{
@@ -29,6 +29,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 func (p *Parser) currPrecedence() int {
@@ -69,25 +70,6 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	return leftExp
 }
 
-func (p *Parser) parseIdentifier() ast.Expression {
-	return &ast.Identifier{Token: p.currToken, Value: p.currToken.Literal}
-}
-
-func (p *Parser) parseIntegerLiteral() ast.Expression {
-	lit := &ast.IntegerLiteral{Token: p.currToken}
-
-	value, err := strconv.ParseInt(p.currToken.Literal, 0, 64)
-	if err != nil {
-		p.errors = append(p.errors,
-			fmt.Sprintf("could not parse %q as integer", p.currToken.Literal))
-		return nil
-	}
-
-	lit.Value = value
-
-	return lit
-}
-
 func (p *Parser) parsePrefixExpression() ast.Expression {
 	expression := &ast.PrefixExpression{
 		Token:    p.currToken,
@@ -112,10 +94,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	expression.Right = p.parseExpression(precedence)
 
 	return expression
-}
-
-func (p *Parser) parseBoolean() ast.Expression {
-	return &ast.Boolean{Token: p.currToken, Value: p.currToken.Is(token.TRUE)}
 }
 
 func (p *Parser) parseGroupedExpression() ast.Expression {
@@ -217,7 +195,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	exp := &ast.CallExpression{Token: p.currToken, Function: function}
-	exp.Arguments = p.parseCallArguments()
+	exp.Arguments = p.parseExpressionList(token.RPAREN)
 	return exp
 }
 
@@ -245,4 +223,42 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	}
 
 	return args
+}
+
+func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
+	list := []ast.Expression{}
+
+	if p.nextToken.Is(end) {
+		p.getNextToken()
+		return list
+	}
+
+	p.getNextToken()
+	list = append(list, p.parseExpression(LOWEST))
+
+	for p.nextToken.Is(token.COMMA) {
+		p.getNextToken()
+		p.getNextToken()
+		list = append(list, p.parseExpression(LOWEST))
+	}
+
+	if !p.expectNextToken(end) {
+		return nil
+	}
+
+	return list
+}
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	exp := &ast.IndexExpression{Token: p.currToken, Left: left}
+
+	p.getNextToken()
+
+	exp.Index = p.parseExpression(LOWEST)
+
+	if !p.expectNextToken(token.RBRACKET) {
+		return nil
+	}
+
+	return exp
 }

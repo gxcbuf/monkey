@@ -402,6 +402,14 @@ func TestOperatorPrecedneceExpression(t *testing.T) {
 			"add(a + b + c * d / f + g)",
 			"add((((a + b) + ((c * d) / f)) + g))",
 		},
+		{
+			"a * [1, 2, 3, 4][b * c] * d",
+			"((a * ([1, 2, 3, 4][(b * c)])) * d)",
+		},
+		{
+			"add(a * b[2], b[1], 2 * [1, 2][1])",
+			"add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+		},
 	}
 
 	for i, tt := range tests {
@@ -438,6 +446,22 @@ func TestBooleanExpression(t *testing.T) {
 		require.True(t, ok, "exp not *ast.Boolean type")
 		require.Equal(t, tt.expectedBoolean, boolean.Value)
 	}
+}
+
+func TestStringLiteralExpression(t *testing.T) {
+	input := `"hello world";`
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	testProgramStatementCount(t, program, 1)
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok, "program.Statements[0] is not ast.ExpressionStatement")
+
+	literal, ok := stmt.Expression.(*ast.StringLiteral)
+	require.True(t, ok, "exp not *ast.StringLiteral type")
+	require.Equal(t, "hello world", literal.Value)
 }
 
 func TestIfExpression(t *testing.T) {
@@ -568,4 +592,112 @@ func TestCallExpressionParsing(t *testing.T) {
 	testLiteralExpression(t, call.Arguments[0], 1)
 	testInfixExpression(t, call.Arguments[1], 2, "*", 3)
 	testInfixExpression(t, call.Arguments[2], 4, "+", 5)
+}
+
+func TestParsingArrayLiterals(t *testing.T) {
+	input := "[1, 2 * 2, 3 + 3]"
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok, "program.Statements[0] is not ast.ExpressionStatement.")
+
+	require.IsType(t, new(ast.ArrayLiteral), stmt.Expression)
+	array, _ := stmt.Expression.(*ast.ArrayLiteral)
+	require.Equal(t, 3, len(array.Elements))
+
+	testIntegerLiteral(t, array.Elements[0], 1)
+	testInfixExpression(t, array.Elements[1], 2, "*", 2)
+	testInfixExpression(t, array.Elements[2], 3, "+", 3)
+}
+
+func TestParsingIndexExpressions(t *testing.T) {
+	input := "myArray[1 + 1]"
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	require.True(t, ok, "program.Statements[0] is not ast.ExpressionStatement.")
+
+	require.IsType(t, new(ast.IndexExpression), stmt.Expression)
+	indexExp, _ := stmt.Expression.(*ast.IndexExpression)
+
+	testIdentifier(t, indexExp.Left, "myArray")
+	testInfixExpression(t, indexExp.Index, 1, "+", 1)
+}
+
+func TestParsingEmptyHashLiteral(t *testing.T) {
+	input := "{}"
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	require.IsType(t, new(ast.HashLiteral), stmt.Expression)
+	require.Equal(t, 0, len(stmt.Expression.(*ast.HashLiteral).Pairs))
+}
+
+func TestParsingHashLiteralsStringKeys(t *testing.T) {
+	input := `{"one": 1, "two": 2, "three": 3}`
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	require.IsType(t, new(ast.HashLiteral), stmt.Expression)
+
+	expected := map[string]int64{
+		"one":   1,
+		"two":   2,
+		"three": 3,
+	}
+
+	hash, _ := stmt.Expression.(*ast.HashLiteral)
+
+	require.Equal(t, len(expected), len(hash.Pairs))
+
+	for key, value := range hash.Pairs {
+		require.IsType(t, new(ast.StringLiteral), key)
+		expectedValue := expected[key.(*ast.StringLiteral).String()]
+		testIntegerLiteral(t, value, expectedValue)
+	}
+}
+
+func TestParsingHashLiteralsWithExpressions(t *testing.T) {
+	input := `{"one": 0 + 1, "two": 10 - 8, "three": 15 / 5}`
+
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	require.IsType(t, new(ast.HashLiteral), stmt.Expression)
+	hash, _ := stmt.Expression.(*ast.HashLiteral)
+	require.Equal(t, 3, len(hash.Pairs))
+
+	tests := map[string]func(ast.Expression){
+		"one": func(e ast.Expression) {
+			testInfixExpression(t, e, 0, "+", 1)
+		},
+		"two": func(e ast.Expression) {
+			testInfixExpression(t, e, 10, "-", 8)
+		},
+		"three": func(e ast.Expression) {
+			testInfixExpression(t, e, 15, "/", 5)
+		},
+	}
+
+	for key, value := range hash.Pairs {
+		require.IsType(t, new(ast.StringLiteral), key)
+		literal, _ := key.(*ast.StringLiteral)
+		testFunc, ok := tests[literal.String()]
+		require.True(t, ok, "No test function for key", literal.String(), "found")
+		testFunc(value)
+	}
 }
